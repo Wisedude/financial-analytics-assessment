@@ -1,0 +1,9 @@
+.git
+.idea
+.vscode
+**/node_modules
+**/dist
+**/target
+backend/data
+**/*.log
+**/.env
