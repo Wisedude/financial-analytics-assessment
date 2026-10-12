@@ -18,6 +18,8 @@ public interface TransactionRepository extends JpaRepository<FinancialTransactio
     List<FinancialTransaction> findByAccountIdAndTransactionDateBetweenOrderByTransactionDateDesc(
             UUID accountId, LocalDate from, LocalDate to);
 
+    List<FinancialTransaction> findByAccountIdOrderByTransactionDateDesc(UUID accountId);
+
     @Query("select coalesce(sum(tx.amount), 0) from FinancialTransaction tx "
             + "where tx.accountId = :accountId")
     java.math.BigDecimal sumAmountByAccountId(@Param("accountId") UUID accountId);

@@ -1,0 +1,7 @@
+.month-picker{display:inline-flex;align-items:center;gap:9px;min-height:42px;padding:0 12px;border:1px solid #e2e8f0;border-radius:9px;background:#fff;color:#455066}
+.month-picker select{max-width:190px;border:0;background:transparent;color:#172033;font:inherit;outline:none;cursor:pointer}
+.month-picker select:disabled{cursor:wait;opacity:.65}
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.month-error{margin-bottom:16px}
+.empty-transactions{padding:16px 0;color:#788397;font-size:13px;text-align:center}
+@media(max-width:600px){.month-picker{gap:6px;padding:0 8px}.month-picker select{max-width:145px}.top-actions{gap:8px}}

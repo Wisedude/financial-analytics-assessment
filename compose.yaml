@@ -45,11 +45,14 @@ services:
       DEMO_USER_NAME: ${DEMO_USER_NAME:-Demo Customer}
       DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-demo@fintrack.local}
       DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-}
+      APP_LOG_PATH: /app/logs/fintrack.log
     ports:
       - "${APP_PORT:-8080}:8080"
     read_only: true
     tmpfs:
       - /tmp
+    volumes:
+      - app-logs:/app/logs
     cap_drop:
       - ALL
     security_opt:
@@ -68,3 +71,4 @@ services:
 
 volumes:
   postgres-data:
+  app-logs:

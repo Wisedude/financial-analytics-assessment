@@ -16,6 +16,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   login: (email: string, password: string) => request<AuthResponse>('/auth/login', { method:'POST', body: JSON.stringify({email,password}) }),
   register: (name: string, email: string, password: string) => request<AuthResponse>('/auth/register', { method:'POST', body: JSON.stringify({name,email,password}) }),
-  dashboard: () => request<Dashboard>('/analytics/dashboard'),
+  dashboard: (month?: string) => request<Dashboard>(
+    `/analytics/dashboard${month ? `?month=${encodeURIComponent(month)}` : ''}`
+  ),
   logout: () => request<void>('/auth/logout', { method:'POST' })
 }

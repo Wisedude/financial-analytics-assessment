@@ -17,6 +17,7 @@ export default function App() {
  const [activeTab,setActiveTab]=useState<AppTab>('Dashboard')
  async function load(){setLoading(true);setError('');try{setData(await api.dashboard())}catch(e){localStorage.removeItem('fintrack_token');localStorage.removeItem('fintrack_user');setUser(null);setError(e instanceof Error?e.message:'Unable to load dashboard')}finally{setLoading(false)}}
  useEffect(()=>{if(user) load()},[user])
+ async function changeDashboardMonth(month:string){setData(await api.dashboard(month))}
  function authenticated(auth:AuthResponse){setUser(auth.user)}
  async function logout(){try{await api.logout()}catch{}localStorage.removeItem('fintrack_token');localStorage.removeItem('fintrack_user');setUser(null);setData(null)}
  if(!user) return <AuthPage onAuthenticated={authenticated}/>
@@ -24,10 +25,10 @@ export default function App() {
  if(error||!data) return <div className="loading-screen"><strong>{error||'No dashboard data'}</strong><button className="primary-btn retry" onClick={load}>Try again</button></div>
  function navigate(tab:AppTab){setActiveTab(tab);setMobileOpen(false)}
  return <div className="app-shell"><Sidebar userName={user.name} activeTab={activeTab} onNavigate={navigate} onLogout={logout} mobileOpen={mobileOpen} closeMobile={()=>setMobileOpen(false)}/><button className="mobile-menu" onClick={()=>setMobileOpen(true)} aria-label="Open navigation">☰</button>
-  {activeTab==='Dashboard'&&<Dashboard data={data} userName={user.name} onNavigate={navigate}/>}
+  {activeTab==='Dashboard'&&<Dashboard data={data} userName={user.name} onNavigate={navigate} onMonthChange={changeDashboardMonth}/>}
   {activeTab==='Analytics'&&<AnalyticsPage data={data}/>}
   {activeTab==='Transactions'&&<TransactionsPage transactions={data.transactions}/>}
-  {activeTab==='Budgets'&&<BudgetsPage categories={data.categories}/>}
+  {activeTab==='Budgets'&&<BudgetsPage categories={data.categories} selectedMonth={data.selectedMonth} budgetPeriods={data.selectedMonth==='all'?Math.max(data.cashFlow.length,1):1}/>}
   {activeTab==='Settings'&&<SettingsPage user={user}/>}
  </div>
 }

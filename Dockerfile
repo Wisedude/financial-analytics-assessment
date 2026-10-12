@@ -16,7 +16,7 @@ RUN mvn -B -DskipTests package
 FROM eclipse-temurin:17-jre-alpine AS runtime
 WORKDIR /app
 RUN addgroup -S fintrack && adduser -S fintrack -G fintrack \
-    && mkdir -p /app \
+    && mkdir -p /app/logs \
     && chown -R fintrack:fintrack /app
 COPY --from=backend-build --chown=fintrack:fintrack /app/backend/target/financial-analytics-api-1.0.0.jar /app/app.jar
 EXPOSE 8080

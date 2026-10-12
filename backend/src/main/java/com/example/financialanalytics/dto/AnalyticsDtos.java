@@ -12,7 +12,11 @@ public final class AnalyticsDtos {
             List<CashFlowPoint> cashFlow,
             List<CategorySpend> categories,
             List<TransactionResponse> transactions,
-            List<Insight> insights) {}
+            List<Insight> insights,
+            List<MonthOption> availableMonths,
+            String selectedMonth) {}
+
+    public record MonthOption(String value, String label) {}
 
     public record Summary(String currency, BigDecimal income, BigDecimal spending,
                           BigDecimal savings, double savingsRate, BigDecimal availableBalance,

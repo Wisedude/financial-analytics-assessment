@@ -6,6 +6,7 @@ import com.example.financialanalytics.service.AuthService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -23,8 +24,11 @@ public class AnalyticsController {
 
     @GetMapping("/dashboard")
     public AnalyticsDtos.DashboardResponse dashboard(
-            @RequestHeader(value = "Authorization", required = false) String authorization) {
-        return analyticsService.getDashboard(authService.requireUser(authorization));
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestParam(required = false) String month) {
+        var user = authService.requireUser(authorization);
+        return month == null ? analyticsService.getDashboard(user)
+                : analyticsService.getDashboard(user, month);
     }
 
     @GetMapping("/cash-flow")

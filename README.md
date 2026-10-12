@@ -33,6 +33,8 @@ To see application logs:
 docker compose logs -f api
 ```
 
+The API also writes structured console-pattern logs to `/app/logs/fintrack.log`. Daily compressed archives are named by date, rotate at 10 MB, and are retained for up to 30 days (within a 1 GB cap). Compose stores these files in the persistent `app-logs` volume; `docker compose down -v` removes them. Locally, logs default to `backend/logs/fintrack.log`; set `APP_LOG_PATH` to change the active file location.
+
 To stop the services without deleting data:
 
 ```sh
@@ -94,6 +96,7 @@ npm run dev
 Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` requests to `http://localhost:8080`; set `VITE_API_PROXY_TARGET` to override that backend address. For a separately hosted frontend, set `VITE_API_URL` to the API base URL ending in `/api/v1` at frontend build time.
 
 The API fails to start if PostgreSQL is unavailable. Schema changes are versioned in `backend/src/main/resources/db/migration`; Hibernate validates the Flyway-managed schema and does not generate tables.
+The dashboard month selector is populated from months that have persisted transactions. It opens on the most recent available month; selecting **All data** aggregates every transaction for the account and shows the full transaction history in the Transactions tab. The dashboard chart covers each month with transaction history, and its activity panel continues to show recent transactions.
 
 ## Build and test
 
@@ -130,9 +133,9 @@ API prefix: `/api/v1`. Login and registration return a bearer token; send it as 
 | `POST` | `/auth/login` | Authenticate and issue a persisted expiring session |
 | `POST` | `/auth/logout` | Revoke the current session |
 | `GET` | `/account` | Return the signed-in user's account and current balance |
-| `GET` | `/analytics/dashboard` | Dashboard summary, six-month cash flow, category spend, recent activity, and insights |
-| `GET` | `/analytics/cash-flow` | Six-month cash-flow series |
-| `GET` | `/analytics/spending` | Current-month spend grouped by budget category |
+| `GET` | `/analytics/dashboard` | Dashboard summary, dynamic available months, cash flow, category spend, recent activity, and insights |
+| `GET` | `/analytics/cash-flow` | Cash-flow series across all months with transaction history |
+| `GET` | `/analytics/spending` | Spend grouped by budget category for the latest available month |
 | `GET` | `/transactions` | Filtered, sorted, paginated transactions |
 | `POST` | `/transactions` | Record a positive amount as a `CREDIT` or `DEBIT` |
 | `GET` | `/transactions/{id}` | Retrieve an owned transaction |
@@ -144,6 +147,8 @@ Transaction list filters: `category`, `type` (`CREDIT` or `DEBIT`), `from`, and 
 Create a transaction with `{"date":"2026-10-09","merchant":"Grocery Market","category":"Groceries","amount":450.00,"type":"DEBIT"}`. Amounts in create requests are positive; the API stores debit amounts as negative values. Transactions are immutable after creation to preserve a clear financial record.
 
 The dashboard keeps the response shape used by the frontend. Financial amounts are stored as PostgreSQL `NUMERIC(14,2)` and represented as decimal JSON numbers. Credits are positive; debits are negative. Monthly category spending and cash flow are calculated from persisted transactions, not from hard-coded dashboard totals.
+
+Use `GET /analytics/dashboard?month=2026-10` to select one available month, or `GET /analytics/dashboard?month=all` to aggregate the account's full transaction history. Omitting `month` selects the latest month with transaction data. The response includes `availableMonths` (`YYYY-MM` values and display labels) and `selectedMonth`. A month without transaction data is rejected with `400 Bad Request`.
 
 ## Persistence and sample data
 
@@ -159,7 +164,7 @@ Registration creates six months of deterministic-for-that-user synthetic salary,
 
 ## Operations and security
 
-- Spring Boot emits request method/path, status, duration, and a generated `X-Request-Id`; passwords and bearer tokens are never logged. Backend exceptions are logged with request IDs.
+- Spring Boot emits request method/path, status, duration, and a generated `X-Request-Id`; passwords, bearer tokens, and financial totals are never logged. Backend exceptions are logged with request IDs. Console output is mirrored to daily rolling application files.
 - `/actuator/health` is the only exposed Actuator surface beyond the liveness/readiness probes.
 - Compose requires separate database-admin and app-role passwords, waits for PostgreSQL readiness, retains its data in a named volume, applies container hardening to the API, and rotates local Docker logs. The API connects as a non-superuser role that owns only the application schema.
 - Keep `.env` out of source control. Use managed secrets, TLS, database backups, appropriate resource limits, and a production identity provider before public deployment.

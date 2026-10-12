@@ -8,6 +8,8 @@ frontend/.env
 backend/target/
 backend/data/app-data.json
 *.log
+*.log.*
+logs/
 .idea/
 .vscode/
 .DS_Store

@@ -5,4 +5,5 @@ export interface CashFlowPoint { month: string; income: number; spending: number
 export interface CategorySpend { name: string; amount: number; budget: number; percentage: number }
 export interface Transaction { id: string; date: string; merchant: string; category: string; amount: number; type: 'CREDIT'|'DEBIT' }
 export interface Insight { type: 'WARNING'|'POSITIVE'|'INFO'; title: string; message: string }
-export interface Dashboard { summary: Summary; cashFlow: CashFlowPoint[]; categories: CategorySpend[]; transactions: Transaction[]; insights: Insight[] }
+export interface MonthOption { value: string; label: string }
+export interface Dashboard { summary: Summary; cashFlow: CashFlowPoint[]; categories: CategorySpend[]; transactions: Transaction[]; insights: Insight[]; availableMonths: MonthOption[]; selectedMonth: string }

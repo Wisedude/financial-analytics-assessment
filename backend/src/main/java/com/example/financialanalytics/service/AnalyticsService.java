@@ -9,14 +9,16 @@ import com.example.financialanalytics.model.User;
 import com.example.financialanalytics.repository.AccountRepository;
 import com.example.financialanalytics.repository.BudgetRepository;
 import com.example.financialanalytics.repository.TransactionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Clock;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -28,38 +30,47 @@ import java.util.UUID;
 
 @Service
 public class AnalyticsService {
+    private static final Logger log = LoggerFactory.getLogger(AnalyticsService.class);
     private static final BigDecimal ZERO = new BigDecimal("0.00");
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final BudgetRepository budgetRepository;
-    private final Clock clock;
 
     public AnalyticsService(AccountRepository accountRepository,
                             TransactionRepository transactionRepository,
-                            BudgetRepository budgetRepository,
-                            Clock clock) {
+                            BudgetRepository budgetRepository) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
         this.budgetRepository = budgetRepository;
-        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
     public AnalyticsDtos.DashboardResponse getDashboard(User user) {
-        Account account = requireAccount(user);
-        LocalDate today = LocalDate.now(clock);
-        LocalDate currentMonth = today.withDayOfMonth(1);
-        LocalDate historyStart = currentMonth.minusMonths(5);
-        List<FinancialTransaction> history = transactionRepository
-                .findByAccountIdAndTransactionDateBetweenOrderByTransactionDateDesc(
-                        account.getId(), historyStart, today);
-        List<FinancialTransaction> currentMonthTransactions = history.stream()
-                .filter(transaction -> !transaction.getTransactionDate().isBefore(currentMonth))
-                .toList();
+        return getDashboard(user, null);
+    }
 
-        BigDecimal income = sumCredits(currentMonthTransactions);
-        BigDecimal spending = sumDebits(currentMonthTransactions);
+    @Transactional(readOnly = true)
+    public AnalyticsDtos.DashboardResponse getDashboard(User user, String requestedMonth) {
+        Account account = requireAccount(user);
+        List<FinancialTransaction> allTransactions =
+                transactionRepository.findByAccountIdOrderByTransactionDateDesc(account.getId());
+        List<AnalyticsDtos.MonthOption> availableMonths = availableMonths(allTransactions);
+        String month = requestedMonth;
+        if (month == null || month.isBlank()) {
+            month = availableMonths.isEmpty() ? "all" : availableMonths.get(0).value();
+        }
+        boolean allMonths = "all".equalsIgnoreCase(month);
+        YearMonth selected = allMonths ? null : parseMonth(month);
+        if (!allMonths && availableMonths.stream().noneMatch(option -> option.value().equals(selected.toString()))) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "No transaction data is available for that month");
+        }
+        List<FinancialTransaction> selectedTransactions = allMonths ? allTransactions
+                : allTransactions.stream().filter(transaction ->
+                        YearMonth.from(transaction.getTransactionDate()).equals(selected)).toList();
+
+        BigDecimal income = sumCredits(selectedTransactions);
+        BigDecimal spending = sumDebits(selectedTransactions);
         BigDecimal savings = income.subtract(spending).setScale(2, RoundingMode.HALF_UP);
         double savingsRate = income.signum() == 0 ? 0
                 : savings.multiply(BigDecimal.valueOf(100))
@@ -69,21 +80,25 @@ public class AnalyticsService {
                 .setScale(2, RoundingMode.HALF_UP);
 
         List<AnalyticsDtos.CategorySpend> categories = categorySpending(account.getId(),
-                currentMonthTransactions);
-        List<AnalyticsDtos.CashFlowPoint> cashFlow = cashFlow(history, historyStart, currentMonth);
-        List<AnalyticsDtos.Insight> insights = insights(savingsRate, categories, spending);
-        List<AnalyticsDtos.TransactionResponse> transactions = history.stream()
-                .limit(50).map(this::toResponse).toList();
-        String period = currentMonth.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH)
-                + " " + currentMonth.getYear();
+                selectedTransactions);
+        List<AnalyticsDtos.CashFlowPoint> cashFlow = allMonths
+                ? cashFlow(allTransactions) : cashFlow(selectedTransactions, selected);
+        List<AnalyticsDtos.Insight> insights = insights(savingsRate, categories, spending,
+                allMonths ? Math.max(cashFlow.size(), 1) : 1);
+        List<AnalyticsDtos.TransactionResponse> transactions = selectedTransactions.stream()
+                .map(this::toResponse).toList();
+        String period = allMonths ? "All time" : monthLabel(selected);
         var summary = new AnalyticsDtos.Summary(account.getCurrency(), income, spending,
                 savings, savingsRate, balance, period);
-        return new AnalyticsDtos.DashboardResponse(summary, cashFlow, categories, transactions, insights);
+        log.info("Dashboard data loaded: period={} transactionCount={}",
+                allMonths ? "all" : selected, selectedTransactions.size());
+        return new AnalyticsDtos.DashboardResponse(summary, cashFlow, categories, transactions, insights,
+                availableMonths, allMonths ? "all" : selected.toString());
     }
 
     @Transactional(readOnly = true)
     public List<AnalyticsDtos.CashFlowPoint> getCashFlow(User user) {
-        return getDashboard(user).cashFlow();
+        return getDashboard(user, "all").cashFlow();
     }
 
     @Transactional(readOnly = true)
@@ -106,18 +121,53 @@ public class AnalyticsService {
     }
 
     private List<AnalyticsDtos.CashFlowPoint> cashFlow(List<FinancialTransaction> transactions,
-                                                        LocalDate start, LocalDate currentMonth) {
+                                                        YearMonth selectedMonth) {
+        return List.of(cashFlowPoint(transactions, selectedMonth));
+    }
+
+    private List<AnalyticsDtos.CashFlowPoint> cashFlow(List<FinancialTransaction> transactions) {
         Map<LocalDate, List<FinancialTransaction>> byMonth = new HashMap<>();
         transactions.forEach(transaction -> byMonth.computeIfAbsent(
                 transaction.getTransactionDate().withDayOfMonth(1), ignored -> new ArrayList<>()).add(transaction));
         List<AnalyticsDtos.CashFlowPoint> points = new ArrayList<>();
-        for (LocalDate month = start; !month.isAfter(currentMonth); month = month.plusMonths(1)) {
+        if (byMonth.isEmpty()) return points;
+        LocalDate start = byMonth.keySet().stream().min(LocalDate::compareTo).orElseThrow();
+        LocalDate end = byMonth.keySet().stream().max(LocalDate::compareTo).orElseThrow();
+        for (LocalDate month = start; !month.isAfter(end); month = month.plusMonths(1)) {
             List<FinancialTransaction> monthTransactions = byMonth.getOrDefault(month, List.of());
-            points.add(new AnalyticsDtos.CashFlowPoint(
-                    month.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
-                    sumCredits(monthTransactions), sumDebits(monthTransactions)));
+            points.add(cashFlowPoint(monthTransactions, YearMonth.from(month)));
         }
         return points;
+    }
+
+    private AnalyticsDtos.CashFlowPoint cashFlowPoint(List<FinancialTransaction> transactions,
+                                                        YearMonth month) {
+        return new AnalyticsDtos.CashFlowPoint(
+                month.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH)
+                        + " " + month.getYear(),
+                sumCredits(transactions), sumDebits(transactions));
+    }
+
+    private List<AnalyticsDtos.MonthOption> availableMonths(List<FinancialTransaction> transactions) {
+        return transactions.stream()
+                .map(transaction -> YearMonth.from(transaction.getTransactionDate()))
+                .distinct()
+                .sorted(Comparator.reverseOrder())
+                .map(month -> new AnalyticsDtos.MonthOption(month.toString(), monthLabel(month)))
+                .toList();
+    }
+
+    private YearMonth parseMonth(String value) {
+        try {
+            return YearMonth.parse(value);
+        } catch (java.time.DateTimeException exception) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "month must use YYYY-MM format or be all");
+        }
+    }
+
+    private String monthLabel(YearMonth month) {
+        return month.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH)
+                + " " + month.getYear();
     }
 
     private List<AnalyticsDtos.CategorySpend> categorySpending(
@@ -143,26 +193,29 @@ public class AnalyticsService {
 
     private List<AnalyticsDtos.Insight> insights(double savingsRate,
                                                  List<AnalyticsDtos.CategorySpend> categories,
-                                                 BigDecimal spending) {
+                                                 BigDecimal spending, int budgetPeriods) {
         List<AnalyticsDtos.Insight> insights = new ArrayList<>();
-        categories.stream().filter(category -> category.amount().compareTo(category.budget()) > 0)
+        categories.stream().filter(category ->
+                        category.amount().compareTo(category.budget().multiply(BigDecimal.valueOf(budgetPeriods))) > 0)
                 .findFirst().ifPresent(category -> insights.add(new AnalyticsDtos.Insight(
                         "WARNING", category.name() + " is over budget",
                         category.name() + " spending is "
-                                + category.amount().subtract(category.budget()).setScale(2, RoundingMode.HALF_UP)
-                                + " over your monthly budget.")));
+                                + category.amount().subtract(category.budget().multiply(
+                                        BigDecimal.valueOf(budgetPeriods)))
+                                .setScale(2, RoundingMode.HALF_UP)
+                                + " over the budget for this period.")));
         if (savingsRate >= 20) {
             insights.add(new AnalyticsDtos.Insight("POSITIVE", "Strong savings rate",
                     "You saved " + String.format(Locale.ROOT, "%.1f", savingsRate)
                             + "% of income this period."));
         } else if (spending.signum() > 0) {
-            insights.add(new AnalyticsDtos.Insight("INFO", "Review your monthly spending",
+            insights.add(new AnalyticsDtos.Insight("INFO", "Review your spending",
                     "Review category spending to find opportunities to save."));
         }
         if (insights.size() < 3 && !categories.isEmpty()) {
             AnalyticsDtos.CategorySpend highest = categories.get(0);
             insights.add(new AnalyticsDtos.Insight("INFO", "Largest spending category",
-                    highest.name() + " is your largest category this month."));
+                    highest.name() + " is your largest spending category this period."));
         }
         return insights;
     }
