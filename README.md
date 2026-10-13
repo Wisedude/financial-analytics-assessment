@@ -18,6 +18,7 @@ FinTrack is a full-stack personal-finance analytics application built with React
 - [Google sign-in setup](#google-sign-in-setup)
 - [Local development](#local-development)
 - [Tests, coverage, and Codecov](#tests-coverage-and-codecov)
+- [GitHub Pages deployment](#github-pages-deployment)
 - [Logs](#logs)
 - [REST API](#rest-api)
 - [Data model (ERD)](#data-model-erd)
@@ -36,7 +37,7 @@ FinTrack is a full-stack personal-finance analytics application built with React
 - Analytics, transactions, budget tracking, settings, transaction search, filtering, pagination, and CSV export.
 - Request IDs, safe request/error logging, daily rolling application log files, and container log rotation.
 - Docker Compose deployment with PostgreSQL, health checks, a non-root API container, and a persistent database volume.
-- GitHub Actions CI for backend tests, frontend type-check/build, JUnit test summaries, and JaCoCo upload to Codecov.
+- GitHub Actions CI with an enforced 80% backend line-coverage gate, frontend type-check/build, JUnit summaries, and JaCoCo upload to Codecov; optional static frontend deployment to GitHub Pages.
 
 ## Requirements
 
@@ -190,7 +191,7 @@ This runs the backend JUnit suite and writes JaCoCo reports:
 
 Open the HTML report in a browser to inspect class, method, and line coverage. Maven prints the test count and any failures in the console.
 
-Latest local validation snapshot: **11 backend tests passed**; JaCoCo reported **43.4% line coverage (252 of 581 lines)**. Re-run the command above for current results; the Codecov badge and pull-request report become the source of live coverage once CI uploads are configured.
+`mvn clean verify` enforces a minimum **80% line coverage** for the backend application bundle. A build below the threshold fails. DTOs, persistence models, infrastructure configuration, the Spring Boot launcher, and the external Google token verifier are excluded from this business-logic coverage gate. The JaCoCo HTML/XML reports show the measured coverage and are the source of current results; do not use a previous local run as a coverage claim.
 
 Build/type-check the frontend:
 
@@ -209,11 +210,23 @@ The [GitHub Actions workflow](./.github/workflows/ci.yml) runs on pushes to `mai
 After the project is on GitHub:
 
 1. Add the repository to [Codecov](https://app.codecov.io/).
-2. Add the Codecov upload token to the GitHub repository as an Actions secret named `CODECOV_TOKEN` (Settings → Secrets and variables → Actions).
-3. Push a commit or open a pull request. The CI workflow uploads the JaCoCo XML report. Codecov displays coverage trends and pull-request coverage changes.
-4. Replace `OWNER/REPOSITORY` in the badges at the top of this README with the repository's GitHub owner and name.
+2. Add the Codecov upload token to the GitHub repository as an Actions secret named `CODECOV_TOKEN` (Settings → Secrets and variables → Actions). Public repositories may also use Codecov's supported tokenless GitHub integration; a token is recommended when upload authentication is required.
+3. Push a commit or open a pull request. The CI workflow uploads `backend/target/site/jacoco/jacoco.xml` whenever it was generated. Codecov displays coverage trends and pull-request coverage changes.
+4. If the repository's default branch is not `main`, update the Codecov badge branch segment to match it.
 
-If `CODECOV_TOKEN` is not configured, backend tests and local coverage generation still work; CI skips the Codecov upload. The Codecov upload step is non-blocking so an external reporting outage does not fail the build.
+The CI run also shows JUnit counts and the JaCoCo line-coverage percentage in its job summary, publishes test results in the workflow's **Checks** view, and stores reports as downloadable artifacts for 14 days. Codecov upload errors are non-blocking; Maven tests and the 80% coverage gate remain required.
+
+## GitHub Pages deployment
+
+The [Pages workflow](./.github/workflows/pages.yml) builds and publishes the React frontend on pushes to `main` or `master`, and can also be run manually from the Actions tab. GitHub Pages hosts static files only; the Spring Boot API and PostgreSQL database must be deployed separately and reachable over public HTTPS.
+
+1. In repository **Settings → Pages**, select **GitHub Actions** as the build and deployment source.
+2. In **Settings → Secrets and variables → Actions → Variables**, add `VITE_API_URL` with the public API base URL, including `/api/v1` (for example, `https://api.example.com/api/v1`). The workflow intentionally fails if this is missing.
+3. If Google sign-in is enabled, add `GOOGLE_CLIENT_ID` as a repository variable. Configure that exact Pages origin (for example, `https://OWNER.github.io`) in the Google OAuth client's authorized JavaScript origins. The frontend auth client ID must also match the ID configured by the backend.
+4. Configure the backend's `CORS_ALLOWED_ORIGINS` to allow the Pages origin. Ensure the API is HTTPS and accessible from users' browsers.
+5. Push to `main`/`master` or run **Deploy frontend to GitHub Pages** in Actions. The published project site URL is normally `https://OWNER.github.io/REPOSITORY/`.
+
+For an organization/user site repository named `OWNER.github.io`, adjust the Pages workflow's base path to `/` rather than the project-site path. Re-run deployment after changing repository variables; Vite embeds the API URL and optional Google client ID at build time.
 
 ### Build the production container
 
@@ -446,7 +459,9 @@ Run `mvn clean verify` and verify `backend/target/site/jacoco/jacoco.xml` exists
 
 ```text
 .
-├── .github/workflows/ci.yml
+├── .github/workflows/
+│   ├── ci.yml
+│   └── pages.yml
 ├── Dockerfile
 ├── compose.yaml
 ├── logs/                         # Host-mounted runtime logs; ignored by Git
