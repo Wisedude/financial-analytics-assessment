@@ -1,0 +1,94 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  backend:
+    name: Backend tests and coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run backend tests and generate JaCoCo report
+        working-directory: backend
+        run: mvn --batch-mode --no-transfer-progress clean verify
+
+      - name: Publish test results
+        if: ${{ always() }}
+        uses: dorny/test-reporter@v2
+        with:
+          name: Backend JUnit tests
+          path: backend/target/surefire-reports/TEST-*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload test and coverage reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-and-coverage-reports
+          path: |
+            backend/target/surefire-reports/
+            backend/target/site/jacoco/jacoco.xml
+            backend/target/site/jacoco/index.html
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Check Codecov token configuration
+        id: codecov-token
+        if: ${{ always() }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          if [ -n "$CODECOV_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload coverage to Codecov
+        if: ${{ always() && steps.codecov-token.outputs.configured == 'true' && hashFiles('backend/target/site/jacoco/jacoco.xml') != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/target/site/jacoco/jacoco.xml
+          flags: backend
+          name: fintrack-backend
+          fail_ci_if_error: false
+
+  frontend:
+    name: Frontend type check and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type-check and build frontend
+        working-directory: frontend
+        run: npm run build

@@ -22,6 +22,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -32,6 +33,7 @@ public class AuthService {
     private final AuthSessionRepository sessionRepository;
     private final FinancialDataGenerator financialDataGenerator;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final GoogleIdentityTokenVerifier googleTokenVerifier;
     private final SecureRandom secureRandom = new SecureRandom();
     private final Clock clock;
     private final long tokenExpiryMinutes;
@@ -39,12 +41,14 @@ public class AuthService {
     public AuthService(UserRepository userRepository,
                        AuthSessionRepository sessionRepository,
                        FinancialDataGenerator financialDataGenerator,
+                       GoogleIdentityTokenVerifier googleTokenVerifier,
                        BCryptPasswordEncoder passwordEncoder,
                        Clock clock,
                        @Value("${app.token-expiry-minutes:120}") long tokenExpiryMinutes) {
         this.userRepository = userRepository;
         this.sessionRepository = sessionRepository;
         this.financialDataGenerator = financialDataGenerator;
+        this.googleTokenVerifier = googleTokenVerifier;
         this.passwordEncoder = passwordEncoder;
         this.clock = clock;
         this.tokenExpiryMinutes = tokenExpiryMinutes;
@@ -63,7 +67,7 @@ public class AuthService {
 
     @Transactional
     public AuthDtos.AuthResponse register(AuthDtos.RegisterRequest request) {
-        String email = request.email().trim().toLowerCase(java.util.Locale.ROOT);
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
         if (userRepository.findByEmailIgnoreCase(email).isPresent()) {
             throw new ApiException(HttpStatus.CONFLICT, "An account with this email already exists");
         }
@@ -74,6 +78,54 @@ public class AuthService {
         financialDataGenerator.createAccountWithSampleData(user.getId());
         log.info("User registered with sample financial data: userId={}", user.getId());
         return issueToken(user);
+    }
+
+    @Transactional
+    public AuthDtos.AuthResponse loginWithGoogle(String credential) {
+        GoogleIdentityTokenVerifier.Identity identity = googleTokenVerifier.verify(credential);
+        User user = userRepository.findByGoogleSubject(identity.subject()).orElse(null);
+        if (user == null) {
+            String email = identity.email().trim().toLowerCase(Locale.ROOT);
+            if (userRepository.findByEmailIgnoreCase(email).isPresent()) {
+                throw new ApiException(HttpStatus.CONFLICT,
+                        "This email already has a FinTrack account. Sign in with your password, then link Google in Settings.");
+            }
+            byte[] randomPassword = new byte[32];
+            secureRandom.nextBytes(randomPassword);
+            String passwordHash = passwordEncoder.encode(Base64.getUrlEncoder()
+                    .withoutPadding().encodeToString(randomPassword));
+            String name = identity.name().trim();
+            if (name.length() > 80) name = name.substring(0, 80);
+            user = new User(UUID.randomUUID(), name, email, passwordHash);
+            user.setGoogleSubject(identity.subject());
+            userRepository.saveAndFlush(user);
+            financialDataGenerator.createAccountWithSampleData(user.getId());
+            log.info("User registered with Google and sample financial data: userId={}", user.getId());
+        } else {
+            log.info("User authenticated with Google: userId={}", user.getId());
+        }
+        return issueToken(user);
+    }
+
+    @Transactional
+    public void linkGoogleIdentity(UUID userId, String credential) {
+        GoogleIdentityTokenVerifier.Identity identity = googleTokenVerifier.verify(credential);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Account not found"));
+        if (!user.getEmail().equalsIgnoreCase(identity.email().trim())) {
+            throw new ApiException(HttpStatus.CONFLICT,
+                    "Sign in to Google with the same email address as your FinTrack account");
+        }
+        User owner = userRepository.findByGoogleSubject(identity.subject()).orElse(null);
+        if (owner != null && !owner.getId().equals(userId)) {
+            throw new ApiException(HttpStatus.CONFLICT, "This Google account is linked to another FinTrack account");
+        }
+        if (user.getGoogleSubject() != null && !user.getGoogleSubject().equals(identity.subject())) {
+            throw new ApiException(HttpStatus.CONFLICT, "A different Google account is already linked");
+        }
+        user.setGoogleSubject(identity.subject());
+        userRepository.save(user);
+        log.info("Google identity linked: userId={}", user.getId());
     }
 
     @Transactional(readOnly = true)

@@ -23,6 +23,9 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
 
+    @Column(name = "google_subject", unique = true, length = 255)
+    private String googleSubject;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -40,4 +43,6 @@ public class User {
     public String getName() { return name; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
+    public String getGoogleSubject() { return googleSubject; }
+    public void setGoogleSubject(String googleSubject) { this.googleSubject = googleSubject; }
 }

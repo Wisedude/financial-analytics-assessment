@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, CalendarDays, Download, MoreHorizontal, Search, Sparkles } from 'lucide-react'
+import { ArrowDown, ArrowUp, CalendarDays, MoreHorizontal, Search, Sparkles } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { Dashboard as DashboardData } from '../types'
 import { date, zar } from '../utils/format'
@@ -21,7 +21,7 @@ export default function Dashboard({data,userName,onNavigate,onMonthChange}:{data
   try{await onMonthChange(month)}catch(error){setMonthError(error instanceof Error?error.message:'Unable to load data for this month')}finally{setChangingMonth(false)}
  }
  return <div className="dashboard-content">
-   <header className="topbar"><div><div className="breadcrumb">Personal finances <span>/</span> Overview</div><h1>Good afternoon, {userName.split(' ')[0]} 👋</h1><p>Here’s what’s happening with your money.</p></div><div className="top-actions"><label className="month-picker"><CalendarDays size={17}/><span className="visually-hidden">Dashboard date range</span><select aria-label="Dashboard date range" value={data.selectedMonth} disabled={changingMonth} onChange={event=>selectMonth(event.target.value)}><option value="all">All data</option>{data.availableMonths.map(month=><option value={month.value} key={month.value}>{month.label}</option>)}</select></label><button className="icon-btn" aria-label="Download dashboard"><Download size={18}/></button></div></header>
+   <header className="topbar"><div><div className="breadcrumb">Personal finances <span>/</span> Overview</div><h1>Good afternoon, {userName.split(' ')[0]} 👋</h1><p>Here’s what’s happening with your money.</p></div><div className="top-actions"><label className="month-picker"><CalendarDays size={17}/><span className="visually-hidden">Dashboard date range</span><select aria-label="Dashboard date range" value={data.selectedMonth} disabled={changingMonth} onChange={event=>selectMonth(event.target.value)}><option value="all">All data</option>{data.availableMonths.map(month=><option value={month.value} key={month.value}>{month.label}</option>)}</select></label></div></header>
    {monthError&&<div className="error-box month-error" role="alert">{monthError}</div>}
    <div className="metric-grid"><MetricCard title={data.selectedMonth==='all'?'Total income':'Monthly income'} value={zar(s.income)} change={s.period} positive icon="income"/><MetricCard title="Total spending" value={zar(s.spending)} change={s.period} positive={false} icon="spend"/><MetricCard title="Savings rate" value={`${s.savingsRate.toFixed(1)}%`} change={`${zar(s.savings)} saved · ${s.period}`} positive icon="save"/><MetricCard title="Available balance" value={zar(s.availableBalance)} change="Current account balance" positive icon="balance"/></div>
    <div className="content-grid">

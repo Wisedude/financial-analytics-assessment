@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react'
 import { ArrowRight, BarChart3, LockKeyhole, Mail, UserRound, WalletCards } from 'lucide-react'
 import type { AuthResponse } from '../types'
 import { api } from '../services/api'
+import GoogleSignInButton from './GoogleSignInButton'
 
 interface Props { onAuthenticated: (auth: AuthResponse) => void }
 
@@ -12,6 +13,7 @@ export default function AuthPage({ onAuthenticated }: Props) {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
 
   async function submit(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError('')
@@ -19,6 +21,15 @@ export default function AuthPage({ onAuthenticated }: Props) {
       const auth = register ? await api.register(name, email, password) : await api.login(email, password)
       localStorage.setItem('fintrack_token', auth.token); localStorage.setItem('fintrack_user', JSON.stringify(auth.user)); onAuthenticated(auth)
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to authenticate') }
+    finally { setBusy(false) }
+  }
+
+  async function signInWithGoogle(credential: string) {
+    setBusy(true); setError('')
+    try {
+      const auth = await api.googleLogin(credential)
+      localStorage.setItem('fintrack_token', auth.token); localStorage.setItem('fintrack_user', JSON.stringify(auth.user)); onAuthenticated(auth)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to authenticate with Google') }
     finally { setBusy(false) }
   }
 
@@ -37,6 +48,16 @@ export default function AuthPage({ onAuthenticated }: Props) {
           {error && <div className="error-box">{error}</div>}
           <button className="primary-btn" disabled={busy}>{busy ? 'Please wait…' : register ? 'Create account' : 'Sign in'} <ArrowRight size={18}/></button>
         </form>
+        {googleClientId&&<>
+          <div className="auth-divider"><span>or</span></div>
+          <GoogleSignInButton
+            clientId={googleClientId}
+            loginHint={email}
+            disabled={busy}
+            onCredential={signInWithGoogle}
+            onError={setError}
+          />
+        </>}
         {!register && <div className="demo-hint"><strong>New to FinTrack?</strong><span>Create an account to get a persistent sample financial history.</span></div>}
         <p className="switch-auth">{register ? 'Already have an account?' : 'New to FinTrack?'} <button onClick={()=>{setRegister(!register);setError('')}}>{register ? 'Sign in' : 'Create an account'}</button></p>
       </div>

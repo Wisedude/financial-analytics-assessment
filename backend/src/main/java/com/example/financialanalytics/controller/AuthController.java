@@ -30,6 +30,22 @@ public class AuthController {
                 .body(response);
     }
 
+    @PostMapping("/google")
+    public ResponseEntity<AuthDtos.AuthResponse> googleLogin(
+            @Valid @RequestBody AuthDtos.GoogleLoginRequest request) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(authService.loginWithGoogle(request.credential()));
+    }
+
+    @PostMapping("/google/link")
+    public ResponseEntity<Void> linkGoogle(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @Valid @RequestBody AuthDtos.GoogleLoginRequest request) {
+        authService.linkGoogleIdentity(authService.requireUser(authorization).getId(), request.credential());
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestHeader(value="Authorization", required=false) String authorization) {
         authService.logout(authorization);

@@ -16,6 +16,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   login: (email: string, password: string) => request<AuthResponse>('/auth/login', { method:'POST', body: JSON.stringify({email,password}) }),
   register: (name: string, email: string, password: string) => request<AuthResponse>('/auth/register', { method:'POST', body: JSON.stringify({name,email,password}) }),
+  googleLogin: (credential: string) => request<AuthResponse>('/auth/google', { method:'POST', body: JSON.stringify({credential}) }),
+  linkGoogle: (credential: string) => request<void>('/auth/google/link', { method:'POST', body: JSON.stringify({credential}) }),
   dashboard: (month?: string) => request<Dashboard>(
     `/analytics/dashboard${month ? `?month=${encodeURIComponent(month)}` : ''}`
   ),

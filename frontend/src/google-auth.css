@@ -1,0 +1,12 @@
+.auth-divider{display:flex;align-items:center;gap:12px;margin:17px 0;color:#929aaa;font-size:11px}
+.auth-divider:before,.auth-divider:after{content:'';height:1px;flex:1;background:#e9edf2}
+.google-signin{position:relative;display:flex;align-items:center;justify-content:center;min-height:40px}
+.google-signin>div:first-child{min-height:40px}
+.google-signin-loading{position:absolute;inset:0;display:grid;place-items:center;background:#fff;color:#687386;font-size:12px;pointer-events:none}
+.google-signin.is-disabled{opacity:.55;pointer-events:none}
+.google-link-row{display:grid;grid-template-columns:minmax(180px,1fr) auto;align-items:center;gap:10px;padding:16px 2px;border-bottom:1px solid #f0f2f5}
+.google-link-row>div:first-child{display:grid;gap:4px}
+.google-link-row strong{font-size:11px}
+.google-link-row span{font-size:9px;color:#8993a2}
+.google-link-message{grid-column:1/-1;margin:0;color:#536fe0;font-size:10px}
+@media(max-width:500px){.google-link-row{grid-template-columns:1fr}.google-link-row .google-signin{justify-content:flex-start}}

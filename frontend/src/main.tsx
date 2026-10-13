@@ -4,4 +4,5 @@ import App from './App'
 import './styles.css'
 import './pages.css'
 import './dashboard.css'
+import './google-auth.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>)
