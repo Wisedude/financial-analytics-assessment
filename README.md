@@ -7,7 +7,7 @@ FinTrack is a full-stack personal-finance analytics application built with React
 
 > **Assessment/demo application:** All generated financial information is synthetic. Do not use this app to store real financial data without a separate security, privacy, and compliance review.
 
-> **Badge setup:** Replace `OWNER/REPOSITORY` in the two badge URLs above with the GitHub owner and repository name after publishing this project. The Codecov badge shows coverage after the repository is added to Codecov and the CI workflow has uploaded a report.
+> **Badge setup:** The Codecov badge shows coverage after the repository is added to Codecov and the CI workflow has uploaded a report.
 
 ## Contents
 
@@ -52,12 +52,6 @@ FinTrack is a full-stack personal-finance analytics application built with React
 - Docker Compose for PostgreSQL (or a compatible PostgreSQL 16 database)
 
 ## Quick start with Docker
-
-From the project root, create the local environment file:
-
-```powershell
-Copy-Item .env.example .env
-```
 
 Edit `.env` and replace `POSTGRES_PASSWORD` and `APP_DB_PASSWORD` with different strong passwords. Start the app and database:
 
