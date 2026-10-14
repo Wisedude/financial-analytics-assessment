@@ -397,7 +397,7 @@ sequenceDiagram
         API->>DB: Check email is not already registered
         API->>DB: Create user, account, sample data and budgets
     else Email belongs to password account
-        API-->>UI: Conflict; require password sign-in and explicit linking
+        API-->>UI: Conflict, sign in with password then link Google in Settings
     end
     API->>DB: Persist hashed FinTrack session token
     API-->>UI: FinTrack token and user profile

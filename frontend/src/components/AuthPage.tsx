@@ -58,7 +58,7 @@ export default function AuthPage({ onAuthenticated }: Props) {
             onError={setError}
           />
         </>}
-        {!register && <div className="demo-hint"><strong>New to FinTrack?</strong><span>Create an account to get a persistent sample financial history.</span></div>}
+        {!register && <div className="demo-hint"><strong>New to FinTrack?</strong><span>Create an account to get a persistent financial history.</span></div>}
         <p className="switch-auth">{register ? 'Already have an account?' : 'New to FinTrack?'} <button onClick={()=>{setRegister(!register);setError('')}}>{register ? 'Sign in' : 'Create an account'}</button></p>
       </div>
     </section>
