@@ -1,10 +1,12 @@
 package com.example.financialanalytics.controller;
 
 import com.example.financialanalytics.dto.AuthDtos;
+import com.example.financialanalytics.model.User;
 import com.example.financialanalytics.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -40,9 +42,9 @@ public class AuthController {
 
     @PostMapping("/google/link")
     public ResponseEntity<Void> linkGoogle(
-            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @AuthenticationPrincipal User user,
             @Valid @RequestBody AuthDtos.GoogleLoginRequest request) {
-        authService.linkGoogleIdentity(authService.requireUser(authorization).getId(), request.credential());
+        authService.linkGoogleIdentity(user.getId(), request.credential());
         return ResponseEntity.noContent().build();
     }
 

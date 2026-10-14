@@ -8,7 +8,6 @@ import com.example.financialanalytics.service.AnalyticsService;
 import com.example.financialanalytics.service.AuthService;
 import com.example.financialanalytics.service.BudgetService;
 import com.example.financialanalytics.service.TransactionService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -41,11 +40,6 @@ class ControllerTest {
             UUID.randomUUID().toString(), LocalDate.parse("2026-10-01"), "Market", "Groceries",
             new BigDecimal("-10.00"), "DEBIT");
 
-    @BeforeEach
-    void setUp() {
-        when(authService.requireUser("Bearer token")).thenReturn(user);
-    }
-
     @Test
     void authControllerReturnsNoStoreResponsesAndRevokesSessions() {
         AuthController controller = new AuthController(authService);
@@ -62,22 +56,22 @@ class ControllerTest {
         assertEquals(HttpStatus.OK, controller.googleLogin(new AuthDtos.GoogleLoginRequest("credential"))
                 .getStatusCode());
         assertEquals(HttpStatus.NO_CONTENT,
-                controller.linkGoogle("Bearer token", new AuthDtos.GoogleLoginRequest("credential")).getStatusCode());
+                controller.linkGoogle(user, new AuthDtos.GoogleLoginRequest("credential")).getStatusCode());
         assertEquals(HttpStatus.NO_CONTENT, controller.logout("Bearer token").getStatusCode());
         verify(authService).linkGoogleIdentity(user.getId(), "credential");
     }
 
     @Test
     void analyticsControllerHandlesDefaultAndExplicitMonth() {
-        AnalyticsController controller = new AnalyticsController(authService, analyticsService);
+        AnalyticsController controller = new AnalyticsController(analyticsService);
         var expected = emptyDashboard();
         when(analyticsService.getDashboard(user)).thenReturn(expected);
         when(analyticsService.getDashboard(user, "2026-10")).thenReturn(expected);
 
-        assertEquals(expected, controller.dashboard("Bearer token", null));
-        assertEquals(expected, controller.dashboard("Bearer token", "2026-10"));
-        controller.cashFlow("Bearer token");
-        controller.spending("Bearer token");
+        assertEquals(expected, controller.dashboard(user, null));
+        assertEquals(expected, controller.dashboard(user, "2026-10"));
+        controller.cashFlow(user);
+        controller.spending(user);
         verify(analyticsService).getCashFlow(user);
         verify(analyticsService).getSpending(user);
     }
@@ -87,7 +81,7 @@ class ControllerTest {
         when(analyticsService.getAccount(user)).thenReturn(
                 new AnalyticsDtos.AccountResponse("account-id", "ZAR", new BigDecimal("10.00")));
 
-        var result = new AccountController(authService, analyticsService).get("Bearer token");
+        var result = new AccountController(analyticsService).get(user);
 
         assertEquals(user.getEmail(), result.user().email());
         assertEquals("account-id", result.account().id());
@@ -99,10 +93,10 @@ class ControllerTest {
                 new BigDecimal("10.00"), new BigDecimal("100.00"), 10.0);
         when(budgetService.getBudgets(user)).thenReturn(List.of(budget));
         when(budgetService.updateBudget(user, "Groceries", new BigDecimal("100.00"))).thenReturn(budget);
-        BudgetController controller = new BudgetController(authService, budgetService);
+        BudgetController controller = new BudgetController(budgetService);
 
-        assertEquals(List.of(budget), controller.list("Bearer token"));
-        assertEquals(budget, controller.update("Bearer token", "Groceries",
+        assertEquals(List.of(budget), controller.list(user));
+        assertEquals(budget, controller.update(user, "Groceries",
                 new AnalyticsDtos.UpdateBudgetRequest(new BigDecimal("100.00"))));
     }
 
@@ -112,22 +106,22 @@ class ControllerTest {
         when(transactionService.search(eq(user), eq("Groceries"), eq("DEBIT"),
                 eq(LocalDate.parse("2026-10-01")), eq(LocalDate.parse("2026-10-31")), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(transaction), pageable, 1));
-        TransactionController controller = new TransactionController(authService, transactionService);
+        TransactionController controller = new TransactionController(transactionService);
 
-        var page = controller.list("Bearer token", "Groceries", "debit",
+        var page = controller.list(user, "Groceries", "debit",
                 LocalDate.parse("2026-10-01"), LocalDate.parse("2026-10-31"), pageable);
 
         assertEquals(1, page.totalElements());
         assertEquals(transaction, page.content().get(0));
-        assertThrows(ApiException.class, () -> controller.list("Bearer token", null, null,
+        assertThrows(ApiException.class, () -> controller.list(user, null, null,
                 null, null, PageRequest.of(0, 101)));
-        assertThrows(ApiException.class, () -> controller.list("Bearer token", null, null, null, null,
+        assertThrows(ApiException.class, () -> controller.list(user, null, null, null, null,
                 PageRequest.of(0, 10, Sort.by("password"))));
-        assertThrows(ApiException.class, () -> controller.list("Bearer token", null, "wire",
+        assertThrows(ApiException.class, () -> controller.list(user, null, "wire",
                 null, null, PageRequest.of(0, 10)));
-        controller.get("Bearer token", UUID.fromString(transaction.id()));
+        controller.get(user, UUID.fromString(transaction.id()));
         when(transactionService.create(eq(user), any())).thenReturn(transaction);
-        var created = controller.create("Bearer token", new AnalyticsDtos.CreateTransactionRequest(
+        var created = controller.create(user, new AnalyticsDtos.CreateTransactionRequest(
                 LocalDate.parse("2026-10-01"), "Market", "Groceries",
                 new BigDecimal("10.00"), "DEBIT"));
         assertEquals(HttpStatus.CREATED, created.getStatusCode());
@@ -135,11 +129,11 @@ class ControllerTest {
 
         when(transactionService.update(eq(user), eq(UUID.fromString(transaction.id())), any()))
                 .thenReturn(transaction);
-        assertEquals(transaction, controller.update("Bearer token", UUID.fromString(transaction.id()),
+        assertEquals(transaction, controller.update(user, UUID.fromString(transaction.id()),
                 new AnalyticsDtos.CreateTransactionRequest(LocalDate.parse("2026-10-01"),
                         "Market", "Groceries", new BigDecimal("10.00"), "DEBIT")));
         assertEquals(HttpStatus.NO_CONTENT,
-                controller.delete("Bearer token", UUID.fromString(transaction.id())).getStatusCode());
+                controller.delete(user, UUID.fromString(transaction.id())).getStatusCode());
         verify(transactionService).delete(user, UUID.fromString(transaction.id()));
     }
 
@@ -148,13 +142,13 @@ class ControllerTest {
         PageRequest pageable = PageRequest.of(0, 10);
         when(transactionService.search(eq(user), eq(" Groceries "), eq("CREDIT"),
                 eq(null), eq(null), eq(pageable))).thenReturn(new PageImpl<>(List.of(), pageable, 0));
-        new TransactionController(authService, transactionService).list(
-                "Bearer token", " Groceries ", " credit ", null, null, pageable);
+        new TransactionController(transactionService).list(
+                user, " Groceries ", " credit ", null, null, pageable);
 
         when(transactionService.search(eq(user), eq(null), eq(null),
                 eq(null), eq(null), eq(pageable))).thenReturn(new PageImpl<>(List.of(), pageable, 0));
-        new TransactionController(authService, transactionService).list(
-                "Bearer token", null, " ", null, null, pageable);
+        new TransactionController(transactionService).list(
+                user, null, " ", null, null, pageable);
     }
 
     private AnalyticsDtos.DashboardResponse emptyDashboard() {

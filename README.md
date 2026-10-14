@@ -31,7 +31,7 @@ FinTrack is a full-stack personal-finance analytics application built with React
 ## Features
 
 - Persistent PostgreSQL storage managed by Flyway migrations.
-- Password registration/login with BCrypt password hashes and expiring, database-backed bearer sessions.
+- Password registration/login with BCrypt password hashes and expiring, database-backed bearer sessions, centrally authenticated by a stateless Spring Security filter.
 - Optional Google Identity Services sign-in. The backend verifies Google ID tokens before creating or authenticating an account.
 - Deterministic sample income, expenses, and budgets generated once when an account is created.
 - Dashboard month selector populated from the account's transaction history, with an **All data** option.
@@ -39,6 +39,7 @@ FinTrack is a full-stack personal-finance analytics application built with React
 - Request IDs, safe request/error logging, daily rolling application log files, and container log rotation.
 - Docker Compose deployment with PostgreSQL, health checks, a non-root API container, and a persistent database volume.
 - GitHub Actions CI with an enforced 80% backend line-coverage gate, frontend type-check/build, JUnit summaries, and JaCoCo upload to Codecov; optional static frontend deployment to GitHub Pages.
+- Configurable in-memory API rate limits for authentication attempts and general API requests.
 
 ## Requirements
 
@@ -269,7 +270,9 @@ If you prefer to browse log files directly in the project folder without using `
 
 ## REST API
 
-The API prefix is `/api/v1`. Except for registration and login endpoints, send the FinTrack token as `Authorization: Bearer <token>`. Tokens are random opaque values; only their SHA-256 hashes are stored, and sessions expire after the configured lifetime.
+The API prefix is `/api/v1`. Except for registration, login, and Google sign-in, send the FinTrack token as `Authorization: Bearer <token>`. A Spring Security filter validates the session centrally and supplies the authenticated user to protected controllers. Logout also requires a valid token. Tokens are random opaque values; only their SHA-256 hashes are stored, and sessions expire after the configured lifetime.
+
+API requests are rate limited per client IP in a fixed time window. Defaults are 120 general API requests per 60 seconds and 10 login, registration, or Google sign-in requests per 60 seconds. Requests over the limit receive `429 Too Many Requests` with a `Retry-After` header. Limits are configurable in `.env`; the in-memory limiter is intended for a single API instance, not a distributed deployment.
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
@@ -447,6 +450,9 @@ sequenceDiagram
 | `GOOGLE_CLIENT_ID` | Compose/backend | Google token audience and frontend build-time client ID; optional |
 | `CORS_ALLOWED_ORIGINS` | Backend | Allowed frontend origins |
 | `TOKEN_EXPIRY_MINUTES` | Backend | FinTrack session lifetime; default `120` |
+| `RATE_LIMIT_WINDOW_SECONDS` | Backend | Fixed-window rate-limit duration; default `60` |
+| `RATE_LIMIT_API_REQUESTS` | Backend | General API requests allowed per client IP per window; default `120` |
+| `RATE_LIMIT_AUTH_REQUESTS` | Backend | Login, registration, and Google sign-in requests allowed per client IP per window; default `10` |
 | `DB_POOL_SIZE` | Backend | Hikari connection-pool maximum; default `10` |
 | `APP_DEMO_USER_ENABLED` | Backend | Enable optional local demo-user initialization |
 | `APP_LOG_PATH` | Backend | Active rolling log file path; default depends on working directory |
@@ -456,6 +462,8 @@ sequenceDiagram
 | `CODECOV_TOKEN` | GitHub Actions secret | Enables private/authenticated Codecov report uploads |
 
 Keep `.env`, frontend local environment files, and CI secrets out of source control. Use a managed secret store, TLS, backups, and appropriate database/network restrictions for a deployed environment.
+
+Rate limits are held in memory by each API process and keyed by the connecting client's socket IP address. They reset when the process restarts and are not shared across multiple API replicas. Behind a reverse proxy, callers may share the proxy's address unless trusted-proxy client-IP resolution is configured; do not trust arbitrary client-supplied forwarding headers. For a multi-instance production deployment, use a shared rate-limit store such as Redis.
 
 ## Troubleshooting
 
