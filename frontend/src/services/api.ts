@@ -1,4 +1,4 @@
-import type { AuthResponse, Dashboard } from '../types'
+import type { AuthResponse, CreateTransactionRequest, Dashboard, Transaction } from '../types'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
@@ -20,6 +20,9 @@ export const api = {
   linkGoogle: (credential: string) => request<void>('/auth/google/link', { method:'POST', body: JSON.stringify({credential}) }),
   dashboard: (month?: string) => request<Dashboard>(
     `/analytics/dashboard${month ? `?month=${encodeURIComponent(month)}` : ''}`
+  ),
+  createTransaction: (transaction: CreateTransactionRequest) => request<Transaction>(
+    '/transactions', { method: 'POST', body: JSON.stringify(transaction) }
   ),
   logout: () => request<void>('/auth/logout', { method:'POST' })
 }

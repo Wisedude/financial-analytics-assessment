@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { AuthResponse, Dashboard as DashboardData, User } from './types'
+import type { AuthResponse, Dashboard as DashboardData, Transaction, User } from './types'
 import { api } from './services/api'
 import AuthPage from './components/AuthPage'
 import Sidebar from './components/Sidebar'
@@ -18,6 +18,7 @@ export default function App() {
  async function load(){setLoading(true);setError('');try{setData(await api.dashboard())}catch(e){localStorage.removeItem('fintrack_token');localStorage.removeItem('fintrack_user');setUser(null);setError(e instanceof Error?e.message:'Unable to load dashboard')}finally{setLoading(false)}}
  useEffect(()=>{if(user) load()},[user])
  async function changeDashboardMonth(month:string){setData(await api.dashboard(month))}
+ async function refreshAfterTransaction(transaction:Transaction){setData(await api.dashboard(transaction.date.slice(0,7)))}
  function authenticated(auth:AuthResponse){setUser(auth.user)}
  async function logout(){try{await api.logout()}catch{}localStorage.removeItem('fintrack_token');localStorage.removeItem('fintrack_user');setUser(null);setData(null)}
  if(!user) return <AuthPage onAuthenticated={authenticated}/>
@@ -27,7 +28,7 @@ export default function App() {
  return <div className="app-shell"><Sidebar userName={user.name} activeTab={activeTab} onNavigate={navigate} onLogout={logout} mobileOpen={mobileOpen} closeMobile={()=>setMobileOpen(false)}/><button className="mobile-menu" onClick={()=>setMobileOpen(true)} aria-label="Open navigation">☰</button>
   {activeTab==='Dashboard'&&<Dashboard data={data} userName={user.name} onNavigate={navigate} onMonthChange={changeDashboardMonth}/>}
   {activeTab==='Analytics'&&<AnalyticsPage data={data}/>}
-  {activeTab==='Transactions'&&<TransactionsPage transactions={data.transactions}/>}
+  {activeTab==='Transactions'&&<TransactionsPage transactions={data.transactions} onTransactionCreated={refreshAfterTransaction}/>}
   {activeTab==='Budgets'&&<BudgetsPage categories={data.categories} selectedMonth={data.selectedMonth} budgetPeriods={data.selectedMonth==='all'?Math.max(data.cashFlow.length,1):1}/>}
   {activeTab==='Settings'&&<SettingsPage user={user}/>}
  </div>

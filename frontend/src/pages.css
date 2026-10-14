@@ -15,6 +15,15 @@
 .analytics-category span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .analytics-category strong{font-size:10px;color:#263044}
 .transactions-panel{padding:0;overflow:hidden}
+.add-transaction-panel{margin-bottom:18px}
+.add-transaction-panel .panel-head{margin-bottom:17px}
+.add-transaction-form{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:14px}
+.add-transaction-form>label{display:grid;gap:6px;color:#687386;font-size:10px;font-weight:600}
+.add-transaction-form input,.add-transaction-form select{width:100%;height:38px;min-width:0;border:1px solid #e1e6ed;border-radius:8px;background:#fff;padding:0 10px;color:#263044;font-size:11px}
+.add-transaction-actions{display:flex;align-items:end;gap:9px}
+.add-transaction-actions .primary-btn,.add-transaction-actions .outline-btn{height:38px}
+.transaction-form-message{margin:12px 0 0;color:#29915a;font-size:11px}
+.transaction-form-message.error{color:#c65353}
 .transaction-summary{padding:19px 20px 15px;display:flex;align-items:center;justify-content:space-between}
 .transaction-summary>div{display:flex;align-items:baseline;gap:7px}
 .transaction-summary strong{font-family:Manrope;font-size:18px}
@@ -91,5 +100,5 @@
 .settings-saved,.settings-save-error{display:flex;align-items:center;gap:5px;margin:10px 0 0 46px;font-size:9px;color:#29915a}
 .settings-save-error{color:#c65353}
 .security-status{border-radius:20px;background:#eaf8ef;color:#29915a!important;padding:5px 9px;font-size:9px!important;font-weight:600}
-@media(max-width:1100px){.transaction-filters{grid-template-columns:1fr 1fr}.budget-overview{grid-template-columns:1fr 1fr}.budget-total{grid-column:1/-1}}
+@media(max-width:1100px){.transaction-filters{grid-template-columns:1fr 1fr}.add-transaction-form{grid-template-columns:1fr 1fr}.budget-overview{grid-template-columns:1fr 1fr}.budget-total{grid-column:1/-1}}
 @media(max-width:760px){.transaction-summary{padding:16px}.transaction-summary>span{max-width:145px;text-align:right;line-height:1.4}.transaction-filters{grid-template-columns:1fr 1fr;padding:0 15px 15px}.transaction-filters .search-box{grid-column:1/-1}.full-transactions th,.full-transactions td{padding:10px 9px}.full-transactions th:first-child,.full-transactions td:first-child{padding-left:13px}.full-transactions th:last-child,.full-transactions td:last-child{padding-right:13px}.full-transactions td{font-size:10px}.full-transactions .merchant{gap:6px}.full-transactions .merchant-icon{width:25px;height:25px}.budget-overview{gap:9px}.budget-stat{padding:14px;min-height:125px}.budget-stat>strong{font-size:16px}.budget-total{min-height:132px}.budget-category-list{grid-template-columns:1fr}.category-budgets{padding:16px}.analytics-category-list{grid-template-columns:1fr 1fr}.profile-details{align-items:flex-start}.profile-fields{grid-template-columns:1fr;gap:15px}.settings-panel{padding:18px}.preference-copy span,.security-row span{line-height:1.5}.analytics-chart{height:240px}}
