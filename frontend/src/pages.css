@@ -40,6 +40,14 @@
 .full-transactions .merchant strong{font-size:11px}
 .full-transactions .merchant small{font-size:9px}
 .amount-cell{text-align:right;font-weight:700}
+.transaction-row-actions{text-align:right;white-space:nowrap}
+.transaction-row-actions .transaction-action-btn{display:inline-grid;vertical-align:middle;margin-left:5px}
+.transaction-action-btn{width:29px;height:29px;display:grid;place-items:center;border:1px solid #e5e9ef;border-radius:7px;background:#fff;color:#687386}
+.transaction-action-btn:hover{background:#f5f7fb;color:#3254d5}
+.transaction-action-btn.delete:hover{background:#fff4f2;color:#c65353}
+.transaction-action-btn:disabled{cursor:wait;opacity:.55}
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.transaction-page-message{margin:0 0 14px}
 .type-pill{display:inline-flex;border-radius:20px;padding:4px 8px;font-size:9px;font-weight:600}
 .type-credit{background:#eaf8ef;color:#29915a}
 .type-debit{background:#fff4eb;color:#bd733a}

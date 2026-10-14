@@ -77,13 +77,41 @@ public class TransactionService {
             User user, AnalyticsDtos.CreateTransactionRequest request) {
         Account account = accountRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Account not found"));
-        String type = request.type().toUpperCase(java.util.Locale.ROOT);
-        BigDecimal amount = request.amount().setScale(2, java.math.RoundingMode.UNNECESSARY);
-        if ("DEBIT".equals(type)) {
-            amount = amount.negate();
-        }
+        String type = normalizeType(request.type());
+        BigDecimal amount = signedAmount(request.amount(), type);
         FinancialTransaction transaction = new FinancialTransaction(UUID.randomUUID(), account.getId(),
                 request.date(), request.merchant().trim(), request.category().trim(), amount, type);
         return analyticsService.toResponse(transactionRepository.save(transaction));
+    }
+
+    @Transactional
+    public AnalyticsDtos.TransactionResponse update(
+            User user, UUID transactionId, AnalyticsDtos.CreateTransactionRequest request) {
+        FinancialTransaction transaction = findOwnedTransaction(user, transactionId);
+        String type = normalizeType(request.type());
+        transaction.updateDetails(request.date(), request.merchant().trim(), request.category().trim(),
+                signedAmount(request.amount(), type), type);
+        return analyticsService.toResponse(transactionRepository.save(transaction));
+    }
+
+    @Transactional
+    public void delete(User user, UUID transactionId) {
+        transactionRepository.delete(findOwnedTransaction(user, transactionId));
+    }
+
+    private FinancialTransaction findOwnedTransaction(User user, UUID transactionId) {
+        Account account = accountRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Account not found"));
+        return transactionRepository.findByIdAndAccountId(transactionId, account.getId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Transaction not found"));
+    }
+
+    private String normalizeType(String type) {
+        return type.toUpperCase(java.util.Locale.ROOT);
+    }
+
+    private BigDecimal signedAmount(BigDecimal amount, String type) {
+        BigDecimal normalizedAmount = amount.setScale(2, java.math.RoundingMode.UNNECESSARY);
+        return "DEBIT".equals(type) ? normalizedAmount.negate() : normalizedAmount;
     }
 }

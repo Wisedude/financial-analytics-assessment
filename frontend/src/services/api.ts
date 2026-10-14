@@ -24,5 +24,11 @@ export const api = {
   createTransaction: (transaction: CreateTransactionRequest) => request<Transaction>(
     '/transactions', { method: 'POST', body: JSON.stringify(transaction) }
   ),
+  updateTransaction: (id: string, transaction: CreateTransactionRequest) => request<Transaction>(
+    `/transactions/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(transaction) }
+  ),
+  deleteTransaction: (id: string) => request<void>(
+    `/transactions/${encodeURIComponent(id)}`, { method: 'DELETE' }
+  ),
   logout: () => request<void>('/auth/logout', { method:'POST' })
 }

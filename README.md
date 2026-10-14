@@ -35,7 +35,7 @@ FinTrack is a full-stack personal-finance analytics application built with React
 - Optional Google Identity Services sign-in. The backend verifies Google ID tokens before creating or authenticating an account.
 - Deterministic sample income, expenses, and budgets generated once when an account is created.
 - Dashboard month selector populated from the account's transaction history, with an **All data** option.
-- Analytics, transactions, budget tracking, settings, transaction search, filtering, pagination, CSV export, and transaction entry.
+- Analytics, transactions, budget tracking, settings, transaction search, filtering, pagination, CSV export, and transaction creation, editing, and deletion.
 - Request IDs, safe request/error logging, daily rolling application log files, and container log rotation.
 - Docker Compose deployment with PostgreSQL, health checks, a non-root API container, and a persistent database volume.
 - GitHub Actions CI with an enforced 80% backend line-coverage gate, frontend type-check/build, JUnit summaries, and JaCoCo upload to Codecov; optional static frontend deployment to GitHub Pages.
@@ -96,9 +96,9 @@ Then run `docker compose up --build -d`. The demo account and its sample data ar
 
 1. Open the application URL. Use **Create an account** to register with a name, email, and password, or sign in to an existing account. Google sign-in appears when configured.
 2. Registration creates the account's sample transactions and budgets in PostgreSQL. Login does not recreate or overwrite them.
-3. On **Dashboard**, select a transaction month from the date picker. The options are based on months with persisted activity. **All data** includes the user's complete available transaction history.
+3. **Dashboard** initially shows **All data**, including the user's complete available transaction history. Select a transaction month from the date picker to view that month; month options are based on persisted activity.
 4. **Analytics** shows income, spending, savings, and category views for the loaded dashboard period.
-5. **Transactions** supports adding income or expenses, searching, filtering by category/type, sorting, and CSV export. Newly added transactions are saved to your account and the dashboard refreshes to their month.
+5. **Transactions** supports adding, editing, and deleting income or expenses, searching, filtering by category/type, sorting, and CSV export. Changes are saved to your account and the dashboard refreshes to reflect them.
 6. **Budgets** compares category activity to configured budget limits. Budget amounts can be changed through the API.
 7. **Settings** displays the profile and local notification preferences. If Google sign-in is configured, sign in with the matching Google email and link the identity here. Existing accounts are never automatically linked by email alone.
 8. Use **Sign out** to revoke the current FinTrack session.
@@ -287,6 +287,8 @@ The API prefix is `/api/v1`. Except for registration and login endpoints, send t
 | `GET` | `/transactions/{id}` | Read one owned transaction |
 | `GET` | `/budgets` | List budget limits and actual spending |
 | `PUT` | `/budgets/{category}` | Update a budget amount |
+| `PUT` | `/transactions/{id}` | Update an owned transaction |
+| `DELETE` | `/transactions/{id}` | Delete an owned transaction |
 
 ### Dashboard period query
 
@@ -318,7 +320,7 @@ Budget update example:
 { "amount": 6000.00 }
 ```
 
-Amounts use PostgreSQL `NUMERIC(14,2)`. Credits are positive and debits negative. Transaction records are immutable after creation.
+Amounts use PostgreSQL `NUMERIC(14,2)`. Credits are positive and debits negative. In the Transactions tab, users can add, edit, or delete their own transactions; updates and deletes are scoped to the authenticated user's account.
 
 ## Application architecture
 

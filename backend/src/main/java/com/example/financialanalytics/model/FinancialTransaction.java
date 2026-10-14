@@ -53,4 +53,13 @@ public class FinancialTransaction {
     public String getCategory() { return category; }
     public BigDecimal getAmount() { return amount; }
     public String getType() { return type; }
+
+    public void updateDetails(LocalDate transactionDate, String merchant, String category,
+                              BigDecimal amount, String type) {
+        this.transactionDate = transactionDate;
+        this.merchant = merchant;
+        this.category = category;
+        this.amount = amount;
+        this.type = type;
+    }
 }

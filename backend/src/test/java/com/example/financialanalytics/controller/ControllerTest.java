@@ -132,6 +132,15 @@ class ControllerTest {
                 new BigDecimal("10.00"), "DEBIT"));
         assertEquals(HttpStatus.CREATED, created.getStatusCode());
         assertEquals("/api/v1/transactions/" + transaction.id(), created.getHeaders().getLocation().getPath());
+
+        when(transactionService.update(eq(user), eq(UUID.fromString(transaction.id())), any()))
+                .thenReturn(transaction);
+        assertEquals(transaction, controller.update("Bearer token", UUID.fromString(transaction.id()),
+                new AnalyticsDtos.CreateTransactionRequest(LocalDate.parse("2026-10-01"),
+                        "Market", "Groceries", new BigDecimal("10.00"), "DEBIT")));
+        assertEquals(HttpStatus.NO_CONTENT,
+                controller.delete("Bearer token", UUID.fromString(transaction.id())).getStatusCode());
+        verify(transactionService).delete(user, UUID.fromString(transaction.id()));
     }
 
     @Test

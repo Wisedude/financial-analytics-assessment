@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -132,5 +133,62 @@ class TransactionServiceTest {
                 "Employer", "Income", new BigDecimal("200.00"), "CREDIT");
 
         assertEquals("200.00", service.create(user, request).amount().toPlainString());
+    }
+
+    @Test
+    void updatesOwnedTransactionAndAppliesDebitSign() {
+        when(transactionRepository.findByIdAndAccountId(transactionId, accountId))
+                .thenReturn(Optional.of(transaction));
+        when(transactionRepository.save(transaction)).thenReturn(transaction);
+        when(analyticsService.toResponse(transaction)).thenReturn(response);
+        var request = new AnalyticsDtos.CreateTransactionRequest(LocalDate.parse("2026-10-14"),
+                " New Market ", " Food ", new BigDecimal("40.50"), "DEBIT");
+
+        service.update(user, transactionId, request);
+
+        assertEquals(LocalDate.parse("2026-10-14"), transaction.getTransactionDate());
+        assertEquals("New Market", transaction.getMerchant());
+        assertEquals("Food", transaction.getCategory());
+        assertEquals("-40.50", transaction.getAmount().toPlainString());
+        assertEquals("DEBIT", transaction.getType());
+        verify(transactionRepository).save(transaction);
+    }
+
+    @Test
+    void updatesToCreditAsPositive() {
+        when(transactionRepository.findByIdAndAccountId(transactionId, accountId))
+                .thenReturn(Optional.of(transaction));
+        when(transactionRepository.save(transaction)).thenReturn(transaction);
+        when(analyticsService.toResponse(transaction)).thenReturn(response);
+
+        service.update(user, transactionId, new AnalyticsDtos.CreateTransactionRequest(
+                LocalDate.parse("2026-10-14"), "Employer", "Income",
+                new BigDecimal("800.00"), "CREDIT"));
+
+        assertEquals("800.00", transaction.getAmount().toPlainString());
+        assertEquals("CREDIT", transaction.getType());
+    }
+
+    @Test
+    void doesNotUpdateOrDeleteTransactionsOutsideTheUsersAccount() {
+        when(transactionRepository.findByIdAndAccountId(transactionId, accountId))
+                .thenReturn(Optional.empty());
+        var updateRequest = new AnalyticsDtos.CreateTransactionRequest(
+                LocalDate.parse("2026-10-14"), "Market", "Food", BigDecimal.TEN, "DEBIT");
+
+        assertThrows(ApiException.class, () -> service.update(user, transactionId, updateRequest));
+        assertThrows(ApiException.class, () -> service.delete(user, transactionId));
+        verify(transactionRepository, never()).save(any(FinancialTransaction.class));
+        verify(transactionRepository, never()).delete(any(FinancialTransaction.class));
+    }
+
+    @Test
+    void deletesOwnedTransaction() {
+        when(transactionRepository.findByIdAndAccountId(transactionId, accountId))
+                .thenReturn(Optional.of(transaction));
+
+        service.delete(user, transactionId);
+
+        verify(transactionRepository).delete(transaction);
     }
 }
