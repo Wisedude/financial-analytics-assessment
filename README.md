@@ -62,7 +62,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Once the API reports healthy, open [http://localhost:8080](http://localhost:8080). The first startup creates and validates the PostgreSQL schema through Flyway. Database records persist in the `postgres-data` volume.
+Once the API reports healthy, open [http://localhost:9501](http://localhost:9501). The first startup creates and validates the PostgreSQL schema through Flyway. Database records persist in the `postgres-data` volume.
 
 Useful lifecycle commands:
 
@@ -169,7 +169,7 @@ For Google sign-in, create `frontend/.env.local`:
 VITE_GOOGLE_CLIENT_ID=your-google-client-id
 ```
 
-Restart Vite after changing environment values. Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` to `http://localhost:8080`; set `VITE_API_PROXY_TARGET` to override it. For a separately hosted production frontend, set `VITE_API_URL` at build time to the API base ending in `/api/v1`.
+Restart Vite after changing environment values. Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` to `http://localhost:9501`; set `VITE_API_PROXY_TARGET` to override it. For a separately hosted production frontend, set `VITE_API_URL` at build time to the API base ending in `/api/v1`.
 
 Schema definitions are in `backend/src/main/resources/db/migration`. Flyway applies migrations; Hibernate validates the schema and does not create or modify tables.
 
@@ -443,7 +443,7 @@ sequenceDiagram
 | `APP_DB_USERNAME` | Compose | Least-privilege API role; default `fintrack_app` |
 | `APP_DB_PASSWORD` | Compose | Required API database password |
 | `DB_PORT` | Compose | Host PostgreSQL port; default `5432` |
-| `APP_PORT` | Compose | Host application port; default `8080` |
+| `APP_PORT` | Compose | Host application port; default `9501` |
 | `GOOGLE_CLIENT_ID` | Compose/backend | Google token audience and frontend build-time client ID; optional |
 | `CORS_ALLOWED_ORIGINS` | Backend | Allowed frontend origins |
 | `TOKEN_EXPIRY_MINUTES` | Backend | FinTrack session lifetime; default `120` |
@@ -452,7 +452,7 @@ sequenceDiagram
 | `APP_LOG_PATH` | Backend | Active rolling log file path; default depends on working directory |
 | `VITE_GOOGLE_CLIENT_ID` | Frontend local build | Google web client ID for Google Identity Services |
 | `VITE_API_URL` | Frontend build | API base URL ending in `/api/v1` when not same-origin |
-| `VITE_API_PROXY_TARGET` | Vite dev server | API origin for `/api` proxy; default `http://localhost:8080` |
+| `VITE_API_PROXY_TARGET` | Vite dev server | API origin for `/api` proxy; default `http://localhost:9501` |
 | `CODECOV_TOKEN` | GitHub Actions secret | Enables private/authenticated Codecov report uploads |
 
 Keep `.env`, frontend local environment files, and CI secrets out of source control. Use a managed secret store, TLS, backups, and appropriate database/network restrictions for a deployed environment.

@@ -50,7 +50,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       APP_LOG_PATH: /app/logs/fintrack.log
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "${APP_PORT:-9501}:9501"
     read_only: true
     tmpfs:
       - /tmp
@@ -61,7 +61,7 @@ services:
     security_opt:
       - no-new-privileges:true
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/actuator/health/readiness"]
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9501/actuator/health/readiness"]
       interval: 15s
       timeout: 5s
       retries: 5
