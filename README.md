@@ -488,6 +488,7 @@ Set `APP_PORT` or `DB_PORT` in `.env` to an unused host port, then rerun `docker
 - Confirm the current browser origin is registered in Google Cloud's authorized JavaScript origins.
 - Check the Google consent screen's audience/testing-user settings and the browser console.
 - A Google email matching a password account must be explicitly linked after password sign-in; it is not merged automatically.
+- If you don't want to setup your own Google Client ID but you want use Google Sign-in, please share your email so that I can add you as part of the users.
 
 ### Tests pass locally but Codecov shows no report
 
